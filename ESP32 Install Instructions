@@ -1,0 +1,10 @@
+Install Instructions
+----------------------
+
+Install Arduino IDE boards by adding following in Board manager:
+https://dl.espressif.com/dl/package_esp32_index.json
+More Info
+https://github.com/espressif/arduino-esp32/blob/master/docs/arduino-ide/boards_manager.md
+
+Install UART drivers
+https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers
