@@ -2,3 +2,5 @@ Rshell commands
 ----------------
 More info
 https://github.com/dhylands/rshell
+
+/dev/tty.SLAB_USBtoUART

@@ -7,4 +7,20 @@ More Info
 https://github.com/espressif/arduino-esp32/blob/master/docs/arduino-ide/boards_manager.md
 
 Install UART drivers
-https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers
+https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers -> 
+https://github.com/adrianmihalko/ch340g-ch34g-ch34x-mac-os-x-driver/blob/master/CH34x_Install_V1.5.pkg -> 
+
+Download firmware
+-------------------
+http://micropython.org/download#esp32
+
+
+Install VS Code
+---------------
+https://code.visualstudio.com/download
+
+
+Install Micropython extension
+------------------------------
+
+https://marketplace.visualstudio.com/itemdetails?itemName=dphans.micropython-ide-vscode
