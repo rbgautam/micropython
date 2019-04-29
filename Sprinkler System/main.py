@@ -1,4 +1,7 @@
+
 import ujson
+import machine
+import sys
 settings ={}
 def readSettings():
   global settings
@@ -26,7 +29,22 @@ def getBoardTime():
   print(currTime)
   return currTime
   
+def display_oled(data):
+  print("21 ->SDA 22->SCL")
+  i2c = I2C(-1, Pin(22), Pin(21)) #21 ->SDA #22->SCL
 
+  display = ssd1306.SSD1306_I2C(128, 64, i2c)
+  display.fill(0)
+  display.text("Garden Keeper", 5, 0)
+  datasplit = data.split('-')
+  display.text(datasplit[0],1,17)
+  display.text(datasplit[1],1,25)
+  display.invert(1)
+  display.text('CPU: ' + str(machine.freq()/1000000) + 'MHz', 1, 35)
+  display.text(sys.platform + " " + sys.version, 1, 45)
+  display.show()
+  #scrioll text
+  #display.scroll(0,40)
 
 def web_page():
   html ="""<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
@@ -41,6 +59,8 @@ def web_page():
   html = html+ """<div><b>Start time 1 : """+settings["STARTTIME1"]+"""</b></div>"""
   html = html+ """</body></html>"""
   saveSettings("STARTTIME1","22:35:00")
+  currDtTime = "UTC: " + stryyyy + "-Time: " + strhhmm
+  display_oled(currDtTime)
   return html
 #(year, month, day, weekday, hours, minutes, seconds, subseconds)
 def convertTupleDate(tup): 
@@ -90,3 +110,4 @@ def main():
     conn.close()
 
 main()
+

@@ -1,12 +1,12 @@
 
+
 try:
     import usocket as socket
 except:
     import socket
 import  network
-from machine import Pin
-import dht
-from machine import RTC
+from machine import Pin, RTC, I2C
+import ssd1306 
 import ntptime
 #import esp
 #esp.osdebug(None)
@@ -26,7 +26,7 @@ while station.isconnected() == False:
 print('Connection successful')
 print(station.ifconfig())
 
-sensor = dht.DHT22(Pin(14))
+#sensor = dht.DHT22(Pin(14))
 rtc = RTC()
 
 #settime using NTP server
