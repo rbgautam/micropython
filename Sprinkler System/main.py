@@ -2,6 +2,7 @@
 import ujson
 import machine
 import sys
+import time
 settings ={}
 def readSettings():
   global settings
@@ -43,6 +44,7 @@ def display_oled(data):
   display.text('CPU: ' + str(machine.freq()/1000000) + 'MHz', 1, 35)
   display.text(sys.platform + " " + sys.version, 1, 45)
   display.show()
+  time.sleep(1)
   #scrioll text
   #display.scroll(0,40)
 
@@ -60,7 +62,7 @@ def web_page():
   html = html+ """</body></html>"""
   saveSettings("STARTTIME1","22:35:00")
   currDtTime = "UTC: " + stryyyy + "-Time: " + strhhmm
-  display_oled(currDtTime)
+ 
   return html
 #(year, month, day, weekday, hours, minutes, seconds, subseconds)
 def convertTupleDate(tup): 
@@ -103,6 +105,20 @@ def main():
   s.listen(5)
     
   while True:
+    #Show clock
+    datetime = rtc.datetime()
+    hour = datetime[4]
+    ampm = "AM"
+    if (hour > 12):
+      hour = hour - 12
+      if (hour == 0):
+          hour = 12
+      ampm = "PM"
+    timdata = ("%d:%02d:%02d "+ampm) % (hour, datetime[5], datetime[6])+"-"+"%d/%d/%d" % (datetime[1], datetime[2], datetime[0])
+    display_oled(timdata)
+    
+    
+    #render web page
     conn, addr = s.accept()
     request = conn.recv(1024)
     response = web_page()
