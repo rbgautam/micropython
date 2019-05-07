@@ -1,8 +1,12 @@
 
+
 import ujson
 import machine
 import sys
 import time
+from machine import Pin, RTC, I2C
+import ssd1306 
+import ntptime
 settings ={}
 def readSettings():
   global settings
@@ -30,6 +34,7 @@ def getBoardTime():
   print(currTime)
   return currTime
   
+#USE BOOTCOUNTER LOGIC
 def display_oled(data):
   print("21 ->SDA 22->SCL")
   i2c = I2C(-1, Pin(22), Pin(21)) #21 ->SDA #22->SCL
@@ -43,11 +48,25 @@ def display_oled(data):
   display.invert(1)
   display.text('CPU: ' + str(machine.freq()/1000000) + 'MHz', 1, 35)
   display.text(sys.platform + " " + sys.version, 1, 45)
+  #stData = station.ifconfig()
+  #display.text(str(stData[0]),1,54)
   display.show()
-  time.sleep(1)
+  machine.deepsleep(5000)
   #scrioll text
   #display.scroll(0,40)
-
+  
+def show_clock(rtc):
+  datetime = rtc.datetime()
+  hour = datetime[4]
+  ampm = "AM"
+  if (hour > 12):
+    hour = hour - 12
+    if (hour == 0):
+        hour = 12
+    ampm = "PM"
+  timdata = ("%d:%02d:%02d "+ampm) % (hour, datetime[5], datetime[6])+"-"+"%d/%d/%d" % (datetime[1], datetime[2], datetime[0])
+  display_oled(timdata)  
+  
 def web_page():
   html ="""<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
   <body><h1>NTP Web Server Time</h1>
@@ -126,4 +145,5 @@ def main():
     conn.close()
 
 #main()
+
 
