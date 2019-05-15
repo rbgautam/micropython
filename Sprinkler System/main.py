@@ -1,5 +1,4 @@
 
-
 import ujson
 import machine
 import sys
@@ -7,6 +6,8 @@ import time
 from machine import Pin, RTC, I2C
 import ssd1306 
 import ntptime
+import alarmcontrol
+
 settings ={}
 def readSettings():
   global settings
@@ -14,7 +15,7 @@ def readSettings():
   settings = ujson.loads(f.read().rstrip("\n"))
   #for key, value in settings.items():
     #print (key ,'corresponds to', settings[key])
-  #print(type(settings))
+    #print(type(settings))
   f.close()
 
 def saveSettings(key,newValue):
@@ -37,6 +38,7 @@ def getBoardTime():
 #USE BOOTCOUNTER LOGIC
 def display_oled(data):
   print("21 ->SDA 22->SCL")
+  global display
   i2c = I2C(-1, Pin(22), Pin(21)) #21 ->SDA #22->SCL
 
   display = ssd1306.SSD1306_I2C(128, 64, i2c)
@@ -50,8 +52,9 @@ def display_oled(data):
   display.text(sys.platform + " " + sys.version, 1, 45)
   #stData = station.ifconfig()
   #display.text(str(stData[0]),1,54)
+  display.poweron()
   display.show()
-  machine.deepsleep(5000)
+  
   #scrioll text
   #display.scroll(0,40)
   
@@ -64,8 +67,12 @@ def show_clock(rtc):
     if (hour == 0):
         hour = 12
     ampm = "PM"
-  timdata = ("%d:%02d:%02d "+ampm) % (hour, datetime[5], datetime[6])+"-"+"%d/%d/%d" % (datetime[1], datetime[2], datetime[0])
+  timdata = ("%02d:%02d:%02d "+ampm) % (hour, datetime[5], datetime[6])+"-"+"%d/%d/%d" % (datetime[1], datetime[2], datetime[0])
   display_oled(timdata)  
+
+def hide_clock():
+  display.poweroff()
+  
   
 def web_page():
   html ="""<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
@@ -91,30 +98,7 @@ def convertTupleDate(tup):
     strDate = year + '/'+mth+ '/' + dy
     return strDate
 
-def convertTupleTime(tup):
-  hour =  str(tup[4])
-  min = str(tup[5])
-  sec = str(tup[6])
-  strTime = hour + ':'+min+ ':'+ sec
-  return strTime
-  
-def getTimeSinceMidnight():
-  currBoardTime = rtc.datetime();
-  currTimeInSeconds = (currBoardTime[4]*60)+(currBoardTime[5]*60)+(currBoardTime[6])
-  currTimeInSeconds = currTimeInSeconds - getTimeOffset()
-  return currTimeInSeconds
-  
-def getTimeOffset():
-  return 6*60*60
-  
-def getCSTTime():
-  currTime = rtc.datetime() 
-  secsfrom12 = getTimeSinceMidnight()
-  hrsFromSecs = int(secsfrom12/3600)
-  minsfromSecs = int((secsfrom12 - (hrsFromSecs*3600))/60)
-  secsFromMins = int(secsfrom12 - ((hrsFromSecs*3600)+(minsfromSecs*60)))
-  rtc.datetime((currTime[0],currTime[1],currTime[2],currTime[3],hrsFromSecs,minsfromSecs,secsFromMins,currTime[7]))
-  return rtc.datetime()
+
 
 def main():
   #setBoardTime()
@@ -143,7 +127,44 @@ def main():
     response = web_page()
     conn.send(response)
     conn.close()
+    
+def alarmpolling(rtc,rtc_wake):
+  print('Alarm polling')
+  if machine.reset_cause() == machine.DEEPSLEEP_RESET:
+    readSettings()
+    #print('woke from a deep sleep')
+    show_clock(rtc)
+    
+    check_alarm_values(rtc)
+    
+    time.sleep(5) 
+    hide_clock()
+  else:
+    print('power on or hard reset')
 
-#main()
+  if rtc.memory() == b'1':
+    machine.deepsleep(5000)
+  if rtc.memory() == b'2':
+    wake_while_active(rtc)
+  
 
+def check_alarm_values(rtc):
+  for key, value in settings.items():
+    
+    if key.find('START') > -1 :
+      #print (key ,'corresponds to', settings[key])
+      alarmcontrol.check_alarm_time(settings[key],rtc,True)
+    if key.find('END') > -1:
+      #print (key ,'corresponds to', settings[key])
+      alarmcontrol.check_alarm_time(settings[key],rtc,False)
 
+def wake_while_active(rtc):
+  while True:
+    readSettings()
+    print('wake while active')
+    show_clock(rtc)
+    
+    check_alarm_values(rtc)
+    
+    time.sleep(5) 
+    hide_clock()
