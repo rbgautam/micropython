@@ -1,4 +1,8 @@
-
+try:
+  import usocket as socket
+except:
+  import socket
+  
 import ujson
 import machine
 import sys
@@ -7,8 +11,42 @@ from machine import Pin, RTC, I2C
 import ssd1306 
 import ntptime
 import alarmcontrol
+import  network
+import ntptolocal
+import alarmcontrol
+
 
 settings ={}
+global rtc_wake
+rtc_wake = False
+switch = Pin(23,Pin.IN)
+
+switch_active = False
+
+def handle_interrupt(v):
+  global switch_active
+  
+  rtc = RTC()
+  print('Switch Interrupt')
+  
+  if switch_active == False:
+    switch_active = True
+    rtc.memory(b'3')
+    start_webserver()
+    
+  if switch_active == True:
+    switch_active = False
+    print('Switch Toggle Off')
+  
+
+
+
+switch.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt)
+
+
+  
+  
+  
 def readSettings():
   global settings
   f = open("settings.py", "r")
@@ -72,23 +110,64 @@ def show_clock(rtc):
 
 def hide_clock():
   display.poweroff()
+
+def start_webserver():
+  ssid =settings["SSID"]
+  password = settings["WIFIPWD"]
+
+  station = network.WLAN(network.STA_IF)
+  station.active(True)
+  station.connect(ssid,password)
+  switch = Pin(23,Pin.IN)
+  switch.irq(trigger=Pin.IRQ_RISING, handler=handle_interrupt)
+  while station.isconnected() == False:
+    pass
+  print('Connection successful')
+  print(station.ifconfig())
+  station = network.WLAN(network.STA_IF)
   
+  print('Start webserver')
+  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  s.bind(( '' , 80))
+  s.listen(5)
   
-def web_page():
+  while True:
+    
+    
+    if switch_active == False:
+      rtc.memory(b'1')
+      machine.deepsleep(1000)
+  
+    conn, addr = s.accept()
+    print('Got a connection from %s' % str(addr)) 
+    #s.on("/submit", handleSubmit);
+    request = conn.recv(1024)
+    print( 'Content = %s' % str(request))
+   
+    request = str(request)
+    #time.sleep(0.25) 
+    response = web_page()
+    conn.send(response)
+    conn.close()
+    
+    
+def handleSubmit():
+  print('Submit')
+  
+def web_page(): 
   html ="""<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-  <body><h1>NTP Web Server Time</h1>
-  <div>
-  <b> Current Time : """
-  dtTup = getBoardTime()
-  stryyyy = convertTupleDate(dtTup)
-  strhhmm = convertTupleTime(dtTup)
-  html = html+  stryyyy + """</b><div>"""
-  html = html+ """<div><b>"""+strhhmm+"""</b></div>"""
-  html = html+ """<div><b>Start time 1 : """+settings["STARTTIME1"]+"""</b></div>"""
+  <body><h1>Garden Keeper</h1>
+  <div> <form method="get" action="/submit"  >"""
+  
+  html = html+ """<div><b>Start time 1 : <input type=time value ="""+settings["STARTTIME1"]+""" name="start1" ></b></div>"""
+  html = html+ """<div><b>End time 1 : <input type=time value ="""+settings["ENDTIME1"]+""" name="end1" ></b></div>"""
+  html = html+ """<div><b>Start time 2 : <input type=time value ="""+settings["STARTTIME2"]+""" name="start2" ></b></div>"""
+  html = html+ """<div><b>End time 2 : <input type=time value ="""+settings["ENDTIME2"]+""" name="end2" ></b></div>"""
+  html = html+ """<div><input type="submit" value="Save"></div></form>"""
   html = html+ """</body></html>"""
-  saveSettings("STARTTIME1","22:35:00")
-  currDtTime = "UTC: " + stryyyy + "-Time: " + strhhmm
- 
+  #saveSettings("STARTTIME1","22:35:00")
+  #currDtTime = "UTC: " + stryyyy + "-Time: " + strhhmm
+  #print('Page genrated')
   return html
 #(year, month, day, weekday, hours, minutes, seconds, subseconds)
 def convertTupleDate(tup): 
@@ -98,7 +177,35 @@ def convertTupleDate(tup):
     strDate = year + '/'+mth+ '/' + dy
     return strDate
 
+def wifi_connect(rtc,timeout=20):
+  print(rtc.memory() )
+  #led.value(0)
+  if rtc.memory() == b'':
+    
+    ssid =settings["SSID"]
+    password = settings["WIFIPWD"]
 
+    station = network.WLAN(network.STA_IF)
+    station.active(True)
+    station.connect(ssid,password)
+
+    while station.isconnected() == False:
+      pass
+    print('Connection successful')
+    print(station.ifconfig())
+    station = network.WLAN(network.STA_IF)
+    stData = station.ifconfig()
+    rtc.memory(b'1')
+    
+    
+  #settime using NTP server
+    UTC_OFFSET = int(settings["TIMEOFFSET"])
+    ntptolocal.settime(UTC_OFFSET)
+    
+  else:
+    alarmpolling(rtc,rtc_wake)
+    print("Woke up ------------------------------------------")
+    
 
 def main():
   #setBoardTime()
@@ -130,7 +237,13 @@ def main():
     
 def alarmpolling(rtc,rtc_wake):
   print('Alarm polling')
+  
   if machine.reset_cause() == machine.DEEPSLEEP_RESET:
+    if switch.value() == 1:
+      print('Switch ON')
+    else:
+      print('Switch OFF')
+      
     readSettings()
     #print('woke from a deep sleep')
     show_clock(rtc)
@@ -146,6 +259,7 @@ def alarmpolling(rtc,rtc_wake):
     machine.deepsleep(5000)
   if rtc.memory() == b'2':
     wake_while_active(rtc)
+  
   
 
 def check_alarm_values(rtc):
@@ -168,3 +282,5 @@ def wake_while_active(rtc):
     
     time.sleep(5) 
     hide_clock()
+
+
