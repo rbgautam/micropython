@@ -143,15 +143,26 @@ def start_webserver():
     #s.on("/submit", handleSubmit);
     request = conn.recv(1024)
     print( 'Content = %s' % str(request))
-   
+    
     request = str(request)
+    if IsSubmitRequest(request):
+      handleSubmit(request)
+
     #time.sleep(0.25) 
     response = web_page()
     conn.send(response)
     conn.close()
-    
-    
-def handleSubmit():
+def IsSubmitRequest(request):
+  print('IsSubmitRequest')
+  if request.find('\r\n') > -1:
+    return True
+  else:
+    return False
+
+#TODO: add logic for parsing the submit request
+# And save the settings 
+# And switch back to normal mode
+def handleSubmit(request):
   print('Submit')
   
 def web_page(): 
